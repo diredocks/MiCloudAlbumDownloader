@@ -10,7 +10,7 @@ class MiCloudDownloader:
     小米云相册下载器，可按需下载图片或视频。
     """
 
-    def __init__(self, cookies, album_id="1", start_date="20100101", end_date="20230101", pic_or_vid=True, path=os.path.dirname(os.path.abspath(__file__))):
+    def __init__(self, cookies, album_id="1", start_date="20100101", end_date="20230101", pic_or_vid=True, path=os.path.dirname(os.path.abspath(__file__)), start_page_num=0):
         """
         初始化函数。
 
@@ -20,6 +20,7 @@ class MiCloudDownloader:
         :param start_date: 想要获取照片的起始日期，字符串类型，默认为"20100101"。
         :param end_date: 想要获取照片的结束日期，字符串类型，默认为"20230101"。
         :param pic_or_vid: 是否只下载图片，布尔类型，默认为True。
+        :parm start_page_num: 初始页面数，证整数类型，默认为0。
         """
         # 将cookies字符串转换为字典类型以供后续使用。
         self.init_cookies = {k: v.value for k, v in SimpleCookie(cookies).items()}
@@ -28,6 +29,7 @@ class MiCloudDownloader:
         self.start_date = start_date
         self.end_date = end_date
         self.pic_or_vid = pic_or_vid
+        self.start_page_num = start_page_num
         self.session = requests.Session()
         # 判断目标目录是否存在，若不存在则提示用户
         if not os.path.exists(path):
@@ -71,15 +73,12 @@ class MiCloudDownloader:
                         downloaded_size += len(chunk)
                         
                         # 根据文件大小选择单位，并显示下载进度
+                        progress = min(int((downloaded_size / file_size) * 100), 100)
                         if file_size >= mb_size:
-                            progress = min(int((downloaded_size / file_size) * 100), 100)
-                            units = "MB"
+                            print(f"📦 下载进度：{progress}% {downloaded_size // mb_size}MB/{file_size // mb_size}MB", end='\r', flush=True)
                         else:
-                            progress = min(int((downloaded_size / file_size) * 100), 100)
-                            units = "KB"
+                            print(f"📦 下载进度：{progress}% {downloaded_size // kb_size}KB/{file_size // kb_size}KB", end='\r', flush=True)
                         
-                        print(f"📦 下载进度：{progress}% {downloaded_size // kb_size}{units}/{file_size // kb_size}KB", end='\r', flush=True)
-
             print(f"\n🟢 已下载\"{filename}\"")
 
     def initSession(self):
@@ -94,7 +93,7 @@ class MiCloudDownloader:
         """更新会话。"""
         try:
             self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10")
-            print("会话已更新 🙌")  # 举手表情
+            print("🙌 会话已更新")  # 举手表情
         except requests.exceptions.RequestException as e:
             print(f"❌ 在会话更新期间出现错误：{str(e)}")  # 错误表情
 
@@ -145,7 +144,7 @@ class MiCloudDownloader:
 
     def mainLoop(self):
         """主循环函数，持续获取照片信息并下载相应的照片。"""
-        page_num = 0
+        page_num = self.start_page_num
         while True:
             pics_info = self.getPictures(str(page_num))
             if not pics_info:
@@ -178,4 +177,4 @@ class MiCloudDownloader:
 
 
 if __name__ == "__main__":
-    MiCloudDownloader("")  # 在这里填入小米云相册的cookies。
+    MiCloudDownloader()  # 在这里填入小米云相册的cookies。
