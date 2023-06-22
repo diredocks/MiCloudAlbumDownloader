@@ -43,7 +43,6 @@ class MiCloudDownloader:
         :param url: 文件下载链接，字符串类型。
         :param data: 需要提交的表单数据，字符串类型。
         :param filename: 下载的文件名，字符串类型。
-        :param path: 下载文件的路径，字符串类型。
         """
 
         # 拼接下载文件的完整路径
