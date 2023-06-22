@@ -39,22 +39,32 @@ class MiCloudDownloader:
         :param filename: The downloaded file name, string type.
         """
         with self.session.post(url, stream=True, data="meta=%s" % data) as r:
+            if r.status_code != 200:
+                print(f"Error occurred while downloading \"{filename}\" ❌")  # Error emoji
+                return
+            
             r.raise_for_status()
             with open(filename, 'wb') as f:
                 # Use streaming download to avoid reading the file into memory at once.
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-        print(f"Downloaded {filename}")
+        print(f"Downloaded \"{filename}\" 📥")  # Download completed emoji
 
     def initSession(self):
         """Initialize session and get the data required for the download link."""
-        self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10", cookies=self.init_cookies)
-        print("Session initialized")
+        try:
+            self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10", cookies=self.init_cookies)
+            print("Session initialized 😌")  # Smiling face emoji
+        except requests.exceptions.RequestException as e:
+            print(f"Error occurred during session initialization: {str(e)} ❌")  # Error emoji
 
     def updateSession(self):
         """Update the session."""
-        self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10")
-        print("Session updated")
+        try:
+            self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10")
+            print("Session updated 🙌")  # Raised hand emoji
+        except requests.exceptions.RequestException as e:
+            print(f"Error occurred during session update: {str(e)} ❌")  # Error emoji
 
     def getDownloadInfo(self, pic_id):
         """
@@ -62,12 +72,16 @@ class MiCloudDownloader:
 
         :param pic_id: Photo ID, string type.
         """
-        # Get the complete data required for the download link.
-        download_info = self.session.get(f"https://i.mi.com/gallery/storage?id={pic_id}").json()["data"]["url"]
-        download_info = self.session.get(download_info)
-        # Convert JSONP format to JSON format.
-        download_info = self.jsonpDump(download_info.text)
-        return download_info
+        try:
+            # Get the complete data required for the download link.
+            download_info = self.session.get(f"https://i.mi.com/gallery/storage?id={pic_id}").json()["data"]["url"]
+            download_info = self.session.get(download_info)
+            # Convert JSONP format to JSON format.
+            download_info = self.jsonpDump(download_info.text)
+            return download_info
+        except (KeyError, requests.exceptions.RequestException) as e:
+            print(f"Error occurred while getting download information for photo {pic_id}: {str(e)} ❌")  # Error emoji
+            return None
 
     def getPictures(self, page_num):
         """
@@ -75,8 +89,12 @@ class MiCloudDownloader:
 
         :param page_num: The page number you want to get, string type.
         """
-        pics_info = self.session.get(f"https://i.mi.com/gallery/user/galleries?&startDate={self.start_date}&endDate={self.end_date}&pageNum={page_num}&pageSize=30&albumId={self.album_id}").json()
-        return pics_info["data"]
+        try:
+            pics_info = self.session.get(f"https://i.mi.com/gallery/user/galleries?&startDate={self.start_date}&endDate={self.end_date}&pageNum={page_num}&pageSize=30&albumId={self.album_id}").json()
+            return pics_info["data"]
+        except (KeyError, requests.exceptions.RequestException) as e:
+            print(f"Error occurred while getting pictures from page {page_num}: {str(e)} ❌")  # Error emoji
+            return None
 
     def jsonpDump(self, jsonpStr):
         """
@@ -98,7 +116,9 @@ class MiCloudDownloader:
         page_num = 0
         while True:
             pics_info = self.getPictures(str(page_num))
-            print(f"Page {page_num}: {len(pics_info['galleries'])} pictures found")
+            if not pics_info:
+                break
+            print(f"Page {page_num}: {len(pics_info['galleries'])} pictures found 📷")  # Camera emoji
             # Get all photos on each page.
             for pic_info in pics_info["galleries"]:
                 # If only pictures are required, skip videos.
@@ -107,8 +127,11 @@ class MiCloudDownloader:
                 # If only videos are required, skip pictures.
                 if not self.pic_or_vid and pic_info["type"] == "image":
                     continue
-                # Get the download link and form data required, and download the corresponding file.
+                
                 download_info = self.getDownloadInfo(pic_info["id"])
+                if not download_info:
+                    continue
+                
                 self.downloadFile(download_info["url"], download_info["meta"], pic_info["fileName"])
 
             # End the loop if it has reached the last page.
@@ -119,8 +142,8 @@ class MiCloudDownloader:
             # Wait for 1 second and update the Session.
             time.sleep(1)
             self.updateSession()
-        print("All pictures are downloaded")
+        print("All pictures are downloaded 🎉")  # Party popper emoji
 
 
 if __name__ == "__main__":
-    MiCloudDownloader(cookies="")  # Fill in the cookies of Xiaomi Cloud album here.
+    MiCloudDownloader("")  # Fill in the cookies of Xiaomi Cloud album here.
