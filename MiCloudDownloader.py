@@ -20,7 +20,7 @@ class MiCloudDownloader:
         :param start_date: 想要获取照片的起始日期，字符串类型，默认为"20100101"。
         :param end_date: 想要获取照片的结束日期，字符串类型，默认为"20230101"。
         :param pic_or_vid: 是否只下载图片，布尔类型，默认为True。
-        :parm start_page_num: 初始页面数，证整数类型，默认为0。
+        :parm start_page_num: 初始页面数，整数类型，默认为0。
         """
         # 将cookies字符串转换为字典类型以供后续使用。
         self.init_cookies = {k: v.value for k, v in SimpleCookie(cookies).items()}
