@@ -1,3 +1,4 @@
+import os
 import time
 import json
 import requests
@@ -9,11 +10,12 @@ class MiCloudDownloader:
     小米云相册下载器，可按需下载图片或视频。
     """
 
-    def __init__(self, cookies, album_id="1", start_date="20100101", end_date="20230101", pic_or_vid=True):
+    def __init__(self, cookies, album_id="1", start_date="20100101", end_date="20230101", pic_or_vid=True, path=os.path.dirname(os.path.abspath(__file__))):
         """
         初始化函数。
 
         :param cookies: 小米云相册的cookies，字符串类型。
+        :param path: 下载文件的路径，字符串类型，默认为空。
         :param album_id: 相册ID，字符串类型，默认为"1"。
         :param start_date: 想要获取照片的起始日期，字符串类型，默认为"20100101"。
         :param end_date: 想要获取照片的结束日期，字符串类型，默认为"20230101"。
@@ -21,11 +23,15 @@ class MiCloudDownloader:
         """
         # 将cookies字符串转换为字典类型以供后续使用。
         self.init_cookies = {k: v.value for k, v in SimpleCookie(cookies).items()}
+        self.path = path
         self.album_id = album_id
         self.start_date = start_date
         self.end_date = end_date
         self.pic_or_vid = pic_or_vid
         self.session = requests.Session()
+        # 判断目标目录是否存在，若不存在则提示用户
+        if not os.path.exists(path):
+            print(f"目录 \"{path}\" 不存在，请检查后手动创建该目录 ❌")
         # 获取下载链接所需的数据并建立Session。
         self.initSession()
         self.mainLoop()
@@ -37,18 +43,43 @@ class MiCloudDownloader:
         :param url: 文件下载链接，字符串类型。
         :param data: 需要提交的表单数据，字符串类型。
         :param filename: 下载的文件名，字符串类型。
+        :param path: 下载文件的路径，字符串类型。
         """
+
+        # 拼接下载文件的完整路径
+        filepath = os.path.join(self.path, filename)
+
         with self.session.post(url, stream=True, data="meta=%s" % data) as r:
             if r.status_code != 200:
-                print(f"下载\"{filename}\"时出错 ❌")  # 错误表情
+                print(f"下载\"{filename}\"时出错 ❌")
                 return
-            
+
             r.raise_for_status()
-            with open(filename, 'wb') as f:
+            file_size = int(r.headers['Content-Length'])
+            downloaded_size = 0
+
+            with open(filepath, 'wb') as f:
+                chunk_size = 8192
+                kb_size = 1024
+                mb_size = kb_size * kb_size
+                
                 # 使用流式下载，避免一次性将文件读入内存。
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        print(f"已下载\"{filename}\" 📥")  # 下载完成表情
+                for chunk in r.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+                        
+                        # 根据文件大小选择单位，并显示下载进度
+                        if file_size >= mb_size:
+                            progress = min(int(downloaded_size / mb_size), int(file_size / mb_size))
+                            units = "MB"
+                        else:
+                            progress = min(int(downloaded_size / kb_size), int(file_size / kb_size))
+                            units = "KB"
+                        
+                        print(f"下载进度：{progress}{units}/{file_size // kb_size}KB", end='\r', flush=True)
+
+            print(f"\n已下载\"{filename}\" 📥")
 
     def initSession(self):
         """初始化会话并获取下载链接所需的数据。"""
@@ -146,4 +177,4 @@ class MiCloudDownloader:
 
 
 if __name__ == "__main__":
-    MiCloudDownloader("")  # 在这里填入小米云相册的cookies。
+    MiCloudDownloader()  # 在这里填入小米云相册的cookies。
