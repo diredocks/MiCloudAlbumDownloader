@@ -62,6 +62,8 @@ class MiCloudDownloader:
                 kb_size = 1024
                 mb_size = kb_size * kb_size
                 
+                print(f"\n开始下载\"{filename}\" 📥")
+
                 # 使用流式下载，避免一次性将文件读入内存。
                 for chunk in r.iter_content(chunk_size=chunk_size):
                     if chunk:
@@ -70,15 +72,15 @@ class MiCloudDownloader:
                         
                         # 根据文件大小选择单位，并显示下载进度
                         if file_size >= mb_size:
-                            progress = min(int(downloaded_size / mb_size), int(file_size / mb_size))
+                            progress = min(int((downloaded_size / file_size) * 100), 100)
                             units = "MB"
                         else:
-                            progress = min(int(downloaded_size / kb_size), int(file_size / kb_size))
+                            progress = min(int((downloaded_size / file_size) * 100), 100)
                             units = "KB"
                         
-                        print(f"下载进度：{progress}{units}/{file_size // kb_size}KB", end='\r', flush=True)
+                        print(f"下载进度：{progress}% {downloaded_size // kb_size}{units}/{file_size // kb_size}KB", end='\r', flush=True)
 
-            print(f"\n已下载\"{filename}\" 📥")
+            print(f"\n已下载\"{filename}\" 🟢")
 
     def initSession(self):
         """初始化会话并获取下载链接所需的数据。"""
@@ -172,7 +174,7 @@ class MiCloudDownloader:
             # 等待1秒并更新会话。
             time.sleep(1)
             self.updateSession()
-        print("所有照片已下载完成 🎉")  # 庆祝表情
+        print("\n所有照片已下载完成 🎉")  # 庆祝表情
 
 
 if __name__ == "__main__":
