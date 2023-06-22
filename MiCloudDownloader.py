@@ -6,125 +6,125 @@ from http.cookies import SimpleCookie
 
 class MiCloudDownloader:
     """
-    Xiaomi Cloud Album Downloader, which can download pictures or videos as needed.
+    小米云相册下载器，可按需下载图片或视频。
     """
 
     def __init__(self, cookies, album_id="1", start_date="20100101", end_date="20230101", pic_or_vid=True):
         """
-        Initialization function.
+        初始化函数。
 
-        :param cookies: Cookies of Xiaomi Cloud album, string type.
-        :param album_id: Album ID, string type, default is "1".
-        :param start_date: The start date of the photos you want to get, string type, default is "20100101".
-        :param end_date: The end date of the photos you want to get, string type, default is "20230101".
-        :param pic_or_vid: Whether to download only pictures, boolean type, default is True.
+        :param cookies: 小米云相册的cookies，字符串类型。
+        :param album_id: 相册ID，字符串类型，默认为"1"。
+        :param start_date: 想要获取照片的起始日期，字符串类型，默认为"20100101"。
+        :param end_date: 想要获取照片的结束日期，字符串类型，默认为"20230101"。
+        :param pic_or_vid: 是否只下载图片，布尔类型，默认为True。
         """
-        # Convert the cookies string to a dictionary type for later use.
+        # 将cookies字符串转换为字典类型以供后续使用。
         self.init_cookies = {k: v.value for k, v in SimpleCookie(cookies).items()}
         self.album_id = album_id
         self.start_date = start_date
         self.end_date = end_date
         self.pic_or_vid = pic_or_vid
         self.session = requests.Session()
-        # Get the data required for the download link and establish the Session.
+        # 获取下载链接所需的数据并建立Session。
         self.initSession()
         self.mainLoop()
 
     def downloadFile(self, url, data, filename):
         """
-        Download file.
+        下载文件。
 
-        :param url: File download link, string type.
-        :param data: Form data that needs to be submitted, string type.
-        :param filename: The downloaded file name, string type.
+        :param url: 文件下载链接，字符串类型。
+        :param data: 需要提交的表单数据，字符串类型。
+        :param filename: 下载的文件名，字符串类型。
         """
         with self.session.post(url, stream=True, data="meta=%s" % data) as r:
             if r.status_code != 200:
-                print(f"Error occurred while downloading \"{filename}\" ❌")  # Error emoji
+                print(f"下载\"{filename}\"时出错 ❌")  # 错误表情
                 return
             
             r.raise_for_status()
             with open(filename, 'wb') as f:
-                # Use streaming download to avoid reading the file into memory at once.
+                # 使用流式下载，避免一次性将文件读入内存。
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-        print(f"Downloaded \"{filename}\" 📥")  # Download completed emoji
+        print(f"已下载\"{filename}\" 📥")  # 下载完成表情
 
     def initSession(self):
-        """Initialize session and get the data required for the download link."""
+        """初始化会话并获取下载链接所需的数据。"""
         try:
             self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10", cookies=self.init_cookies)
-            print("Session initialized 😌")  # Smiling face emoji
+            print("会话已初始化 😌")  # 笑脸表情
         except requests.exceptions.RequestException as e:
-            print(f"Error occurred during session initialization: {str(e)} ❌")  # Error emoji
+            print(f"在会话初始化期间出现错误：{str(e)} ❌")  # 错误表情
 
     def updateSession(self):
-        """Update the session."""
+        """更新会话。"""
         try:
             self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10")
-            print("Session updated 🙌")  # Raised hand emoji
+            print("会话已更新 🙌")  # 举手表情
         except requests.exceptions.RequestException as e:
-            print(f"Error occurred during session update: {str(e)} ❌")  # Error emoji
+            print(f"在会话更新期间出现错误：{str(e)} ❌")  # 错误表情
 
     def getDownloadInfo(self, pic_id):
         """
-        Get the download link and form data required for the photo ID.
+        获取照片ID所需的下载链接和表单数据。
 
-        :param pic_id: Photo ID, string type.
+        :param pic_id: 照片ID，字符串类型。
         """
         try:
-            # Get the complete data required for the download link.
+            # 获取下载链接所需的完整数据。
             download_info = self.session.get(f"https://i.mi.com/gallery/storage?id={pic_id}").json()["data"]["url"]
             download_info = self.session.get(download_info)
-            # Convert JSONP format to JSON format.
+            # 将JSONP格式转换为JSON格式。
             download_info = self.jsonpDump(download_info.text)
             return download_info
         except (KeyError, requests.exceptions.RequestException) as e:
-            print(f"Error occurred while getting download information for photo {pic_id}: {str(e)} ❌")  # Error emoji
+            print(f"在获取照片{pic_id}的下载信息时发生错误：{str(e)} ❌")  # 错误表情
             return None
 
     def getPictures(self, page_num):
         """
-        Get the photo information of the specified page number.
+        获取指定页数的照片信息。
 
-        :param page_num: The page number you want to get, string type.
+        :param page_num: 想要获取的页数，字符串类型。
         """
         try:
             pics_info = self.session.get(f"https://i.mi.com/gallery/user/galleries?&startDate={self.start_date}&endDate={self.end_date}&pageNum={page_num}&pageSize=30&albumId={self.album_id}").json()
             return pics_info["data"]
         except (KeyError, requests.exceptions.RequestException) as e:
-            print(f"Error occurred while getting pictures from page {page_num}: {str(e)} ❌")  # Error emoji
+            print(f"在从第{page_num}页获取照片时发生错误：{str(e)} ❌")  # 错误表情
             return None
 
     def jsonpDump(self, jsonpStr):
         """
-        Convert the JSONP format string to JSON format.
+        将JSONP格式的字符串转换为JSON格式。
 
-        :param jsonpStr: The string to be converted, string type.
+        :param jsonpStr: 需要转换的字符串，字符串类型。
         """
-        # Construct the starting symbol and ending symbol of the JSONP string.
+        # 构造JSONP字符串的起始符号和结束符号。
         _jsonp_begin = 'dl_img_cb('
         _jsonp_end = ')'
         jsonp_str = jsonpStr.strip()
         if not jsonp_str.startswith(_jsonp_begin) or not jsonp_str.endswith(_jsonp_end):
-            raise ValueError('Invalid JSONP')
-        # Get the string in the JSONP and parse it.
+            raise ValueError('无效的JSONP')
+        # 获取JSONP中的字符串并解析。
         return json.loads(jsonp_str[len(_jsonp_begin):-len(_jsonp_end)])
 
     def mainLoop(self):
-        """The main loop function keeps getting photo information and downloading corresponding photos."""
+        """主循环函数，持续获取照片信息并下载相应的照片。"""
         page_num = 0
         while True:
             pics_info = self.getPictures(str(page_num))
             if not pics_info:
                 break
-            print(f"Page {page_num}: {len(pics_info['galleries'])} pictures found 📷")  # Camera emoji
-            # Get all photos on each page.
+            print(f"第{page_num}页：找到{len(pics_info['galleries'])}张照片 📷")  # 相机表情
+            # 获取每一页上的所有照片。
             for pic_info in pics_info["galleries"]:
-                # If only pictures are required, skip videos.
+                # 如果只需要图片，则跳过视频。
                 if self.pic_or_vid and pic_info["type"] != "image":
                     continue
-                # If only videos are required, skip pictures.
+                # 如果只需要视频，则跳过图片。
                 if not self.pic_or_vid and pic_info["type"] == "image":
                     continue
                 
@@ -134,16 +134,16 @@ class MiCloudDownloader:
                 
                 self.downloadFile(download_info["url"], download_info["meta"], pic_info["fileName"])
 
-            # End the loop if it has reached the last page.
+            # 如果已经到达最后一页，则结束循环。
             if pics_info["isLastPage"]:
                 break
 
             page_num += 1
-            # Wait for 1 second and update the Session.
+            # 等待1秒并更新会话。
             time.sleep(1)
             self.updateSession()
-        print("All pictures are downloaded 🎉")  # Party popper emoji
+        print("所有照片已下载完成 🎉")  # 庆祝表情
 
 
 if __name__ == "__main__":
-    MiCloudDownloader("")  # Fill in the cookies of Xiaomi Cloud album here.
+    MiCloudDownloader("")  # 在这里填入小米云相册的cookies。
