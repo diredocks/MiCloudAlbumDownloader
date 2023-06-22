@@ -29,7 +29,7 @@
    - `album_id` (string): The ID of the album you want to download from (default: "1").
    - `start_date` (string): The start date of the photos you want to download (default: "20100101").
    - `end_date` (string): The end date of the photos you want to download (default: "20230101").
-   - `pic_or_vid` (boolean): Set to `True` if you want to download only pictures, `False` if you want to download both pictures and videos (default: `True`).
+   - `pic_or_vid` (boolean): Set to `True` if you want to download only pictures, `False` if you want to download only videos (default: `True`).
 
 ## License
 
