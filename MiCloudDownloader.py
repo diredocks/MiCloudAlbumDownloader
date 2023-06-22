@@ -31,7 +31,7 @@ class MiCloudDownloader:
         self.session = requests.Session()
         # 判断目标目录是否存在，若不存在则提示用户
         if not os.path.exists(path):
-            print(f"目录 \"{path}\" 不存在，请检查后手动创建该目录 ❌")
+            print(f"❌ 目录 \"{path}\" 不存在，请检查后手动创建该目录")
         # 获取下载链接所需的数据并建立Session。
         self.initSession()
         self.mainLoop()
@@ -50,7 +50,7 @@ class MiCloudDownloader:
 
         with self.session.post(url, stream=True, data="meta=%s" % data) as r:
             if r.status_code != 200:
-                print(f"下载\"{filename}\"时出错 ❌")
+                print(f"❌ 下载\"{filename}\"时出错")
                 return
 
             r.raise_for_status()
@@ -62,7 +62,7 @@ class MiCloudDownloader:
                 kb_size = 1024
                 mb_size = kb_size * kb_size
                 
-                print(f"\n开始下载\"{filename}\" 📥")
+                print(f"\n📥 开始下载\"{filename}\"")
 
                 # 使用流式下载，避免一次性将文件读入内存。
                 for chunk in r.iter_content(chunk_size=chunk_size):
@@ -78,17 +78,17 @@ class MiCloudDownloader:
                             progress = min(int((downloaded_size / file_size) * 100), 100)
                             units = "KB"
                         
-                        print(f"下载进度：{progress}% {downloaded_size // kb_size}{units}/{file_size // kb_size}KB", end='\r', flush=True)
+                        print(f"📦 下载进度：{progress}% {downloaded_size // kb_size}{units}/{file_size // kb_size}KB", end='\r', flush=True)
 
-            print(f"\n已下载\"{filename}\" 🟢")
+            print(f"\n🟢 已下载\"{filename}\"")
 
     def initSession(self):
         """初始化会话并获取下载链接所需的数据。"""
         try:
             self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10", cookies=self.init_cookies)
-            print("会话已初始化 😌")  # 笑脸表情
+            print("😌 会话已初始化")  # 笑脸表情
         except requests.exceptions.RequestException as e:
-            print(f"在会话初始化期间出现错误：{str(e)} ❌")  # 错误表情
+            print(f"❌ 在会话初始化期间出现错误：{str(e)}")  # 错误表情
 
     def updateSession(self):
         """更新会话。"""
@@ -96,7 +96,7 @@ class MiCloudDownloader:
             self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10")
             print("会话已更新 🙌")  # 举手表情
         except requests.exceptions.RequestException as e:
-            print(f"在会话更新期间出现错误：{str(e)} ❌")  # 错误表情
+            print(f"❌ 在会话更新期间出现错误：{str(e)}")  # 错误表情
 
     def getDownloadInfo(self, pic_id):
         """
@@ -112,7 +112,7 @@ class MiCloudDownloader:
             download_info = self.jsonpDump(download_info.text)
             return download_info
         except (KeyError, requests.exceptions.RequestException) as e:
-            print(f"在获取照片{pic_id}的下载信息时发生错误：{str(e)} ❌")  # 错误表情
+            print(f"❌ 在获取照片{pic_id}的下载信息时发生错误：{str(e)}")  # 错误表情
             return None
 
     def getPictures(self, page_num):
@@ -125,7 +125,7 @@ class MiCloudDownloader:
             pics_info = self.session.get(f"https://i.mi.com/gallery/user/galleries?&startDate={self.start_date}&endDate={self.end_date}&pageNum={page_num}&pageSize=30&albumId={self.album_id}").json()
             return pics_info["data"]
         except (KeyError, requests.exceptions.RequestException) as e:
-            print(f"在从第{page_num}页获取照片时发生错误：{str(e)} ❌")  # 错误表情
+            print(f"❌ 在从第{page_num}页获取照片时发生错误：{str(e)}")  # 错误表情
             return None
 
     def jsonpDump(self, jsonpStr):
@@ -150,7 +150,7 @@ class MiCloudDownloader:
             pics_info = self.getPictures(str(page_num))
             if not pics_info:
                 break
-            print(f"第{page_num}页：找到{len(pics_info['galleries'])}张照片 📷")  # 相机表情
+            print(f"📷 第{page_num}页：找到{len(pics_info['galleries'])}张照片")  # 相机表情
             # 获取每一页上的所有照片。
             for pic_info in pics_info["galleries"]:
                 # 如果只需要图片，则跳过视频。
@@ -174,8 +174,8 @@ class MiCloudDownloader:
             # 等待1秒并更新会话。
             time.sleep(1)
             self.updateSession()
-        print("\n所有照片已下载完成 🎉")  # 庆祝表情
+        print("\n🎉 所有照片已下载完成")  # 庆祝表情
 
 
 if __name__ == "__main__":
-    MiCloudDownloader()  # 在这里填入小米云相册的cookies。
+    MiCloudDownloader("")  # 在这里填入小米云相册的cookies。
