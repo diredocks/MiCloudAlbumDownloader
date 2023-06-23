@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import hashlib
 import requests
 from http.cookies import SimpleCookie
 
@@ -10,7 +11,8 @@ class MiCloudDownloader:
     小米云相册下载器，可按需下载图片或视频。
     """
 
-    def __init__(self, cookies, album_id="1", start_date="20100101", end_date="20230101", pic_or_vid=True, path=os.path.dirname(os.path.abspath(__file__)), start_page_num=0):
+    def __init__(self, cookies, album_id="1", start_date="20100101", end_date="20230101", pic_or_vid=True,
+                 path=os.path.dirname(os.path.abspath(__file__)), start_page_num=0):
         """
         初始化函数。
 
@@ -38,17 +40,37 @@ class MiCloudDownloader:
         self.initSession()
         self.mainLoop()
 
-    def downloadFile(self, url, data, filename):
+    def calculateFileSHA1(self, filepath):
+        """
+        计算文件的SHA1值。
+
+        :param filepath: 文件路径，字符串类型。
+        """
+        sha1_hash = hashlib.sha1()
+        with open(filepath, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                sha1_hash.update(chunk)
+        return sha1_hash.hexdigest()
+
+    def downloadFile(self, url, data, filename, sha1):
         """
         下载文件。
 
         :param url: 文件下载链接，字符串类型。
         :param data: 需要提交的表单数据，字符串类型。
         :param filename: 下载的文件名，字符串类型。
+        :parm sha1: 用于校验文件完整性和断点续传，字符串类型。
         """
 
         # 拼接下载文件的完整路径
         filepath = os.path.join(self.path, filename)
+
+        # 检查目录是否存在同名文件
+        if os.path.exists(filepath):
+            md5_value = self.calculateFileSHA1(filepath)
+            if md5_value == sha1:
+                print(f"\n❌ 同名文件 \"{filename}\" 已存在")  # 错误表情
+                return
 
         with self.session.post(url, stream=True, data="meta=%s" % data) as r:
             if r.status_code != 200:
@@ -63,7 +85,7 @@ class MiCloudDownloader:
                 chunk_size = 8192
                 kb_size = 1024
                 mb_size = kb_size * kb_size
-                
+
                 print(f"\n📥 开始下载\"{filename}\"")
 
                 # 使用流式下载，避免一次性将文件读入内存。
@@ -71,20 +93,26 @@ class MiCloudDownloader:
                     if chunk:
                         f.write(chunk)
                         downloaded_size += len(chunk)
-                        
+
                         # 根据文件大小选择单位，并显示下载进度
                         progress = min(int((downloaded_size / file_size) * 100), 100)
                         if file_size >= mb_size:
-                            print(f"📦 下载进度：{progress}% {downloaded_size // mb_size}MB/{file_size // mb_size}MB", end='\r', flush=True)
+                            print(f"📦 下载进度：{progress}% {downloaded_size // mb_size}MB/{file_size // mb_size}MB",
+                                  end='\r', flush=True)
                         else:
-                            print(f"📦 下载进度：{progress}% {downloaded_size // kb_size}KB/{file_size // kb_size}KB", end='\r', flush=True)
-                        
-            print(f"\n🟢 已下载\"{filename}\"")
+                            print(f"📦 下载进度：{progress}% {downloaded_size // kb_size}KB/{file_size // kb_size}KB",
+                                  end='\r', flush=True)
+
+            # 计算文件的MD5值
+            md5_value = self.calculateFileSHA1(filepath)
+            print(f"\n🟢 已下载\"{filename}\" 文件的SHA1值为：{md5_value}")
 
     def initSession(self):
         """初始化会话并获取下载链接所需的数据。"""
+        self.last_update_time = time.time()  # 上次更新会话的时间戳
         try:
-            self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10", cookies=self.init_cookies)
+            self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10",
+                             cookies=self.init_cookies)
             print("😌 会话已初始化")  # 笑脸表情
         except requests.exceptions.RequestException as e:
             print(f"❌ 在会话初始化期间出现错误：{str(e)}")  # 错误表情
@@ -92,8 +120,13 @@ class MiCloudDownloader:
     def updateSession(self):
         """更新会话。"""
         try:
-            self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10")
-            print("🙌 会话已更新")  # 举手表情
+            # 检查上次更新会话的时间是否超过两分钟，如果超过则更新会话。
+            if time.time() - self.last_update_time > 120:
+                self.session.get("https://i.mi.com/status/lite/setting?type=AutoRenewal&inactiveTime=10")
+                print("🙌 会话已更新")  # 举手表情
+                self.last_update_time = time.time()  # 更新上次更新会话的时间戳
+            else:
+                return
         except requests.exceptions.RequestException as e:
             print(f"❌ 在会话更新期间出现错误：{str(e)}")  # 错误表情
 
@@ -121,7 +154,8 @@ class MiCloudDownloader:
         :param page_num: 想要获取的页数，字符串类型。
         """
         try:
-            pics_info = self.session.get(f"https://i.mi.com/gallery/user/galleries?&startDate={self.start_date}&endDate={self.end_date}&pageNum={page_num}&pageSize=30&albumId={self.album_id}").json()
+            pics_info = self.session.get(
+                f"https://i.mi.com/gallery/user/galleries?&startDate={self.start_date}&endDate={self.end_date}&pageNum={page_num}&pageSize=30&albumId={self.album_id}").json()
             return pics_info["data"]
         except (KeyError, requests.exceptions.RequestException) as e:
             print(f"❌ 在从第{page_num}页获取照片时发生错误：{str(e)}")  # 错误表情
@@ -158,21 +192,21 @@ class MiCloudDownloader:
                 # 如果只需要视频，则跳过图片。
                 if not self.pic_or_vid and pic_info["type"] == "image":
                     continue
-                
+
                 download_info = self.getDownloadInfo(pic_info["id"])
                 if not download_info:
                     continue
-                
-                self.downloadFile(download_info["url"], download_info["meta"], pic_info["fileName"])
+
+                self.downloadFile(download_info["url"], download_info["meta"], pic_info["fileName"], pic_info["sha1"])
+                self.updateSession()
 
             # 如果已经到达最后一页，则结束循环。
             if pics_info["isLastPage"]:
                 break
 
             page_num += 1
-            # 等待1秒并更新会话。
+            # 等待1秒
             time.sleep(1)
-            self.updateSession()
         print("\n🎉 所有照片已下载完成")  # 庆祝表情
 
 
